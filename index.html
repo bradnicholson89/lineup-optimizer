@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baseball Lineup Optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --grass: #1a3a1a;
+    --dirt: #8b5e3c;
+    --chalk: #f5f0e8;
+    --red: #c0392b;
+    --gold: #d4a843;
+    --navy: #0d1b2a;
+    --panel: #111d2b;
+    --panel2: #162233;
+    --border: #1e3048;
+    --text: #cdd6e0;
+    --muted: #5a7a96;
+    --accent: #e8c96a;
+    --green: #2ecc71;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--navy);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(30,60,90,0.6) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, rgba(10,30,50,0.8) 0%, transparent 60%);
+  }
+
+  header {
+    background: var(--panel);
+    border-bottom: 2px solid var(--gold);
+    padding: 20px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    color: var(--accent);
+    letter-spacing: 3px;
+    line-height: 1;
+  }
+
+  header .sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    max-width: 460px;
+    line-height: 1.5;
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 28px 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  .section-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 3px;
+    color: var(--gold);
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* LEFT PANEL */
+  .left-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-right: none;
+    padding: 24px;
+    border-radius: 6px 0 0 6px;
+  }
+
+  .model-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .model-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px 14px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .model-btn.active {
+    background: var(--accent);
+    color: var(--navy);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  .model-btn:hover:not(.active) {
+    border-color: var(--muted);
+    color: var(--text);
+  }
+
+  .player-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .player-table th {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 500;
+  }
+
+  .player-table th.center { text-align: center; }
+
+  .player-row td {
+    padding: 5px 4px;
+  }
+
+  .player-row td:first-child {
+    font-size: 0.65rem;
+    color: var(--muted);
+    width: 24px;
+    text-align: right;
+    padding-right: 8px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  .player-row input[type="text"] {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    padding: 7px 9px;
+    width: 100%;
+    border-radius: 3px;
+    transition: border-color 0.15s;
+  }
+
+  .player-row input[type="text"]:focus {
+    outline: none;
+    border-color: var(--gold);
+    background: #1a2d42;
+  }
+
+  .player-row input.stat-input {
+    width: 70px;
+    text-align: center;
+  }
+
+  .player-row input.invalid {
+    border-color: var(--red);
+    background: rgba(192,57,43,0.08);
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    flex: 1;
+    padding: 13px 20px;
+    background: var(--accent);
+    color: var(--navy);
+    border: none;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s;
+  }
+
+  .btn-primary:hover { background: #f0d87a; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    padding: 13px 18px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .btn-secondary:hover { border-color: var(--muted); color: var(--text); }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    padding: 24px;
+    border-radius: 0 6px 6px 0;
+    min-height: 500px;
+  }
+
+  .results-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    gap: 16px;
+    opacity: 0.35;
+  }
+
+  .results-placeholder .icon {
+    font-size: 4rem;
+  }
+
+  .results-placeholder p {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-align: center;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  /* Results */
+  .results-container { display: none; }
+  .results-container.visible { display: block; }
+
+  .runs-score {
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .runs-score::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--grass), var(--gold), var(--grass));
+  }
+
+  .runs-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--muted);
+    font-family: 'IBM Plex Sans', sans-serif;
+    margin-bottom: 4px;
+  }
+
+  .runs-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 4rem;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .runs-subtext {
+    font-size: 0.65rem;
+    color: var(--muted);
+    font-family: 'IBM Plex Sans', sans-serif;
+    margin-top: 4px;
+  }
+
+  .model-badge {
+    display: inline-block;
+    background: var(--grass);
+    color: #5abe70;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 3px 8px;
+    border-radius: 2px;
+    margin-top: 8px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  .lineup-list {
+    list-style: none;
+    margin-bottom: 20px;
+  }
+
+  .lineup-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(30,48,72,0.6);
+    transition: background 0.1s;
+    border-radius: 2px;
+  }
+
+  .lineup-list li:hover { background: rgba(255,255,255,0.03); }
+
+  .slot-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    color: var(--gold);
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .player-name-result {
+    flex: 1;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--chalk);
+  }
+
+  .stat-pills {
+    display: flex;
+    gap: 6px;
+  }
+
+  .pill {
+    font-size: 0.65rem;
+    padding: 3px 7px;
+    border-radius: 2px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 500;
+  }
+
+  .pill-obp { background: rgba(46,204,113,0.15); color: #2ecc71; }
+  .pill-slg { background: rgba(212,168,67,0.15); color: var(--gold); }
+
+  /* Top lineups */
+  .top-lineups {
+    margin-top: 8px;
+  }
+
+  .top-lineup-item {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .top-lineup-item:hover { border-color: var(--muted); }
+  .top-lineup-item.active { border-color: var(--gold); }
+
+  .top-lineup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .top-lineup-rank {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+  }
+
+  .top-lineup-runs {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .top-lineup-names {
+    padding: 8px 14px 10px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'IBM Plex Sans', sans-serif;
+    line-height: 1.6;
+  }
+
+  .bench-section {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .bench-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  .bench-players {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .bench-tag {
+    background: rgba(90,122,150,0.12);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.65rem;
+    padding: 4px 9px;
+    border-radius: 2px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--grass), var(--gold));
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+
+  .error-msg {
+    background: rgba(192,57,43,0.12);
+    border: 1px solid rgba(192,57,43,0.4);
+    color: #e74c3c;
+    padding: 12px 16px;
+    border-radius: 3px;
+    font-size: 0.78rem;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .info-strip {
+    margin-top: 28px;
+    padding: 12px 16px;
+    background: rgba(212,168,67,0.07);
+    border-left: 2px solid var(--gold);
+    font-size: 0.68rem;
+    color: var(--muted);
+    line-height: 1.7;
+    font-family: 'IBM Plex Sans', sans-serif;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .info-strip a { color: var(--gold); text-decoration: none; }
+  .info-strip a:hover { text-decoration: underline; }
+
+  .computing-msg {
+    display: none;
+    text-align: center;
+    padding: 30px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  .dot-flash span {
+    animation: flash 1.2s infinite;
+    opacity: 0;
+  }
+  .dot-flash span:nth-child(2) { animation-delay: 0.2s; }
+  .dot-flash span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes flash { 0%,80%,100%{opacity:0} 40%{opacity:1} }
+
+  /* Add/remove player row button */
+  .row-count-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    margin-top: 4px;
+  }
+
+  .row-count-ctrl span {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'IBM Plex Sans', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .row-ctrl-btn {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 26px;
+    height: 26px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s;
+    font-family: monospace;
+    line-height: 1;
+  }
+
+  .row-ctrl-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* CSV Import */
+  .csv-section {
+    margin-bottom: 18px;
+  }
+
+  .csv-drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 4px;
+    padding: 16px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--panel2);
+    position: relative;
+  }
+
+  .csv-drop-zone:hover, .csv-drop-zone.dragover {
+    border-color: var(--gold);
+    background: rgba(212,168,67,0.06);
+  }
+
+  .csv-drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .csv-drop-icon {
+    font-size: 1.4rem;
+    margin-bottom: 6px;
+  }
+
+  .csv-drop-text {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'IBM Plex Sans', sans-serif;
+    line-height: 1.5;
+  }
+
+  .csv-drop-text strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .csv-hint {
+    margin-top: 8px;
+    font-size: 0.62rem;
+    color: var(--muted);
+    font-family: 'IBM Plex Sans', sans-serif;
+    line-height: 1.6;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  .csv-hint code {
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+  }
+
+  .csv-success {
+    display: none;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(46,204,113,0.1);
+    border: 1px solid rgba(46,204,113,0.3);
+    border-radius: 3px;
+    font-size: 0.72rem;
+    color: #2ecc71;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  .csv-download-link {
+    font-size: 0.62rem;
+    color: var(--muted);
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 6px;
+    cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  .csv-download-link:hover { color: var(--accent); }
+
+  /* Lineup size toggle */
+  .lineup-size-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .size-btn {
+    flex: 1;
+    min-width: 110px;
+    padding: 10px 14px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  .size-btn.active {
+    background: rgba(46,204,113,0.15);
+    color: #2ecc71;
+    border-color: rgba(46,204,113,0.4);
+    font-weight: 600;
+  }
+
+  .size-btn:hover:not(.active) {
+    border-color: var(--muted);
+    color: var(--text);
+  }
+
+  .size-btn small {
+    display: block;
+    font-size: 0.58rem;
+    opacity: 0.7;
+    margin-top: 2px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+
+  /* Both-models tab switcher */
+  .model-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .model-tab {
+    flex: 1;
+    padding: 9px 14px;
+    background: var(--panel);
+    border: none;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+    border-right: 1px solid var(--border);
+  }
+
+  .model-tab:last-child { border-right: none; }
+
+  .model-tab.active {
+    background: rgba(212,168,67,0.12);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .model-tab:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.03); }
+
+  .model-panel { display: none; }
+  .model-panel.visible { display: block; }
+
+  .delta-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 2px;
+    margin-left: 8px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+
+  .delta-pos { background: rgba(46,204,113,0.15); color: #2ecc71; }
+  .delta-neg { background: rgba(192,57,43,0.15); color: #e74c3c; }
+  .delta-neu { background: rgba(90,122,150,0.15); color: var(--muted); }
+
+  .slot-diff {
+    font-size: 0.62rem;
+    color: var(--muted);
+    margin-left: 6px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .slot-diff.moved-up { color: #2ecc71; }
+  .slot-diff.moved-dn { color: #e74c3c; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚾ Lineup Optimizer</h1>
+  <div class="sub">Enter up to 14 players with OBP & Slugging. The tool evaluates all lineup combinations and ranks by expected runs/game — based on Morong regression analysis.</div>
+</header>
+
+<div class="main-grid">
+
+  <!-- LEFT: INPUT -->
+  <div class="left-panel">
+    <div class="section-label">Model Selection</div>
+    <div class="model-row">
+      <button class="model-btn active" id="btn1989" onclick="setModel('1989')">1989–2002</button>
+      <button class="model-btn" id="btn1959" onclick="setModel('1959')">1959–2004</button>
+      <button class="model-btn" id="btnBoth" onclick="setModel('both')">Both Models</button>
+    </div>
+
+    <div class="section-label">Lineup Size</div>
+    <div class="lineup-size-row">
+      <button class="size-btn active" id="btnSize9" onclick="setLineupSize('9')">
+        Best 9
+        <small>Find optimal 9 from roster</small>
+      </button>
+      <button class="size-btn" id="btnSizeAll" onclick="setLineupSize('all')">
+        All Players
+        <small>Order entire roster</small>
+      </button>
+    </div>
+
+    <div class="section-label">Import CSV</div>
+    <div class="csv-section">
+      <div class="csv-drop-zone" id="csvDropZone">
+        <input type="file" accept=".csv,text/csv" id="csvFileInput" onchange="handleCsvFile(this.files[0])" />
+        <div class="csv-drop-icon">📂</div>
+        <div class="csv-drop-text"><strong>Click to browse</strong> or drag & drop a CSV file</div>
+      </div>
+      <div class="csv-hint">
+        Expected columns (header row required):<br>
+        <code>name, obp, slg</code> &nbsp;—&nbsp; e.g. <code>Mookie Betts, 0.358, 0.557</code><br>
+        Column names are flexible: <code>player/name</code>, <code>obp/on_base</code>, <code>slg/slugging</code>
+        <br><a class="csv-download-link" onclick="downloadTemplate()">⬇ Download template CSV</a>
+      </div>
+      <div class="csv-success" id="csvSuccess"></div>
+    </div>
+
+    <div class="section-label">Player Roster</div>
+
+    <div class="row-count-ctrl">
+      <span>Players:</span>
+      <button class="row-ctrl-btn" onclick="removeRow()">−</button>
+      <span id="rowCountDisplay">9</span>
+      <button class="row-ctrl-btn" onclick="addRow()">+</button>
+      <span style="font-size:0.62rem; color:var(--muted);">(9–14)</span>
+    </div>
+
+    <table class="player-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Player Name</th>
+          <th class="center">OBP</th>
+          <th class="center">SLG</th>
+        </tr>
+      </thead>
+      <tbody id="playerRows">
+      </tbody>
+    </table>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="actions">
+      <button class="btn-primary" onclick="runOptimizer()">▶ Optimize Lineup</button>
+      <button class="btn-secondary" onclick="clearAll()">Clear</button>
+      <button class="btn-secondary" onclick="loadSample()">Sample</button>
+    </div>
+
+    <div class="info-strip">
+      Methodology based on regression analysis by <a href="https://cyrilmorong.com/ValueofOBPandSLGbyLineupPosition.htm" target="_blank">Cyril Morong</a>, originally implemented at <a href="https://www.baseballmusings.com/cgi-bin/LineupAnalysis.py" target="_blank">Baseball Musings</a>. OBP and SLG coefficients vary by lineup slot and model period. <strong>Best 9</strong> evaluates all combinations to find the optimal 9-man lineup. <strong>All Players</strong> finds the best batting order for your full roster.
+    </div>
+  </div>
+
+  <!-- RIGHT: RESULTS -->
+  <div class="right-panel">
+    <div class="section-label">Results</div>
+
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+
+    <div class="computing-msg" id="computingMsg">
+      Computing <span class="dot-flash"><span>.</span><span>.</span><span>.</span></span>
+    </div>
+
+    <div class="results-placeholder" id="placeholder">
+      <div class="icon">📋</div>
+      <p>Enter players & click<br>Optimize Lineup</p>
+    </div>
+
+    <div class="results-container" id="resultsContainer">
+
+      <!-- Both-models tab switcher (shown only in both mode) -->
+      <div id="modelTabsRow" style="display:none">
+        <div class="model-tabs">
+          <button class="model-tab active" id="tab1989" onclick="switchModelTab('1989')">1989–2002</button>
+          <button class="model-tab" id="tab1959" onclick="switchModelTab('1959')">1959–2004</button>
+        </div>
+      </div>
+
+      <!-- Per-model panels (used in both mode) -->
+      <div id="panel1989" class="model-panel visible">
+        <div class="runs-score runs-score-1989">
+          <div class="runs-label">Optimal Lineup · Runs per Game</div>
+          <div class="runs-value" id="runsValue1989">—</div>
+          <div class="runs-subtext" id="runsSubtext1989"></div>
+          <div class="model-badge">1989–2002 Model</div>
+        </div>
+        <div class="section-label" style="margin-bottom:10px;margin-top:16px;">Optimal Batting Order</div>
+        <ul class="lineup-list" id="lineupList1989"></ul>
+        <div class="bench-section" id="benchSection1989" style="display:none">
+          <div class="bench-label">Bench (not in optimal lineup)</div>
+          <div class="bench-players" id="benchPlayers1989"></div>
+        </div>
+      </div>
+
+      <div id="panel1959" class="model-panel">
+        <div class="runs-score runs-score-1959">
+          <div class="runs-label">Optimal Lineup · Runs per Game</div>
+          <div class="runs-value" id="runsValue1959">—</div>
+          <div class="runs-subtext" id="runsSubtext1959"></div>
+          <div class="model-badge">1959–2004 Model</div>
+        </div>
+        <div class="section-label" style="margin-bottom:10px;margin-top:16px;">Optimal Batting Order</div>
+        <ul class="lineup-list" id="lineupList1959"></ul>
+        <div class="bench-section" id="benchSection1959" style="display:none">
+          <div class="bench-label">Bench (not in optimal lineup)</div>
+          <div class="bench-players" id="benchPlayers1959"></div>
+        </div>
+      </div>
+
+      <!-- Single-model view (used when not in both mode) -->
+      <div id="singleModelView">
+        <div class="runs-score" id="runsScore">
+          <div class="runs-label">Optimal Lineup · Runs per Game</div>
+          <div class="runs-value" id="runsValue">—</div>
+          <div class="runs-subtext" id="runsSubtext"></div>
+          <div class="model-badge" id="modelBadge"></div>
+        </div>
+        <div class="section-label" style="margin-bottom:10px;">Optimal Batting Order</div>
+        <ul class="lineup-list" id="lineupList"></ul>
+        <div class="bench-section" id="benchSection" style="display:none">
+          <div class="bench-label">Bench (not in optimal lineup)</div>
+          <div class="bench-players" id="benchPlayers"></div>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:20px;margin-bottom:10px;" id="topLineupsLabel"></div>
+      <div class="top-lineups" id="topLineups"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// REGRESSION COEFFICIENTS
+// From Cyril Morong's analysis — OBP and SLG coefficients
+// for each batting order slot (1–9)
+// ============================================================
+
+// 1989-2002 model coefficients [slot1..slot9]
+const COEFF_1989 = {
+  obp: [0.003010, 0.002476, 0.001984, 0.002447, 0.002254, 0.002065, 0.001925, 0.001458, 0.002049],
+  slg: [0.000958, 0.001121, 0.001526, 0.002257, 0.001996, 0.002271, 0.001756, 0.001485, 0.001501],
+  intercept: 0.651
+};
+
+// 1959-2004 model coefficients [slot1..slot9]
+const COEFF_1959 = {
+  obp: [0.002640, 0.002073, 0.001882, 0.002076, 0.001991, 0.001846, 0.001720, 0.001369, 0.001846],
+  slg: [0.000754, 0.000934, 0.001271, 0.001798, 0.001640, 0.001844, 0.001449, 0.001178, 0.001232],
+  intercept: 0.476
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let currentModel = '1989';
+let rowCount = 9;
+let lineupSize = '9'; // '9' or 'all'
+
+function setModel(m) {
+  currentModel = m;
+  document.getElementById('btn1989').classList.toggle('active', m === '1989');
+  document.getElementById('btn1959').classList.toggle('active', m === '1959');
+  document.getElementById('btnBoth').classList.toggle('active', m === 'both');
+}
+
+function setLineupSize(s) {
+  lineupSize = s;
+  document.getElementById('btnSize9').classList.toggle('active', s === '9');
+  document.getElementById('btnSizeAll').classList.toggle('active', s === 'all');
+}
+
+// ============================================================
+// ROW MANAGEMENT
+// ============================================================
+function buildRows() {
+  const tbody = document.getElementById('playerRows');
+  tbody.innerHTML = '';
+  for (let i = 1; i <= rowCount; i++) {
+    const tr = document.createElement('tr');
+    tr.className = 'player-row';
+    tr.innerHTML = `
+      <td>${i}</td>
+      <td><input type="text" class="name-input" placeholder="Player ${i}" data-idx="${i-1}" /></td>
+      <td><input type="text" class="stat-input obp-input" placeholder=".000" data-idx="${i-1}" /></td>
+      <td><input type="text" class="stat-input slg-input" placeholder=".000" data-idx="${i-1}" /></td>
+    `;
+    tbody.appendChild(tr);
+  }
+  document.getElementById('rowCountDisplay').textContent = rowCount;
+}
+
+function addRow() {
+  if (rowCount < 14) { rowCount++; buildRows(); }
+}
+
+function removeRow() {
+  if (rowCount > 9) { rowCount--; buildRows(); }
+}
+
+// ============================================================
+// SCORING FUNCTION
+// ============================================================
+function scoreLineup(lineup, coeff) {
+  const n = lineup.length;
+  let runs = coeff.intercept;
+
+  if (n === 9) {
+    // Standard 9-slot scoring
+    for (let i = 0; i < 9; i++) {
+      runs += coeff.obp[i] * lineup[i].obp * 1000;
+      runs += coeff.slg[i] * lineup[i].slg * 1000;
+    }
+  } else {
+    // For lineups > 9: interpolate coefficients across N slots.
+    // Map each slot i (0..N-1) to a fractional position in the 9-slot model.
+    for (let i = 0; i < n; i++) {
+      const frac = (i / (n - 1)) * 8; // maps to 0..8
+      const lo = Math.floor(frac);
+      const hi = Math.min(lo + 1, 8);
+      const t = frac - lo;
+      const obpC = coeff.obp[lo] * (1 - t) + coeff.obp[hi] * t;
+      const slgC = coeff.slg[lo] * (1 - t) + coeff.slg[hi] * t;
+      // Scale contribution: each of N players contributes 9/N of a normal slot
+      const scale = 9 / n;
+      runs += obpC * lineup[i].obp * 1000 * scale;
+      runs += slgC * lineup[i].slg * 1000 * scale;
+    }
+  }
+  return runs;
+}
+
+// ============================================================
+// PERMUTATION HELPERS
+// ============================================================
+function permutations(arr) {
+  if (arr.length <= 1) return [arr];
+  const result = [];
+  for (let i = 0; i < arr.length; i++) {
+    const rest = arr.slice(0, i).concat(arr.slice(i + 1));
+    const perms = permutations(rest);
+    for (const perm of perms) {
+      result.push([arr[i], ...perm]);
+    }
+  }
+  return result;
+}
+
+function combinations(arr, k) {
+  if (k === 0) return [[]];
+  if (arr.length < k) return [];
+  const [first, ...rest] = arr;
+  const withFirst = combinations(rest, k - 1).map(c => [first, ...c]);
+  const withoutFirst = combinations(rest, k);
+  return [...withFirst, ...withoutFirst];
+}
+
+// Smarter optimizer: for 9 players exact perms (362880 is too many for JS sync)
+// Use simulated annealing / hill-climbing for speed
+function optimizeLineupOrder(players, coeff) {
+  const n = players.length;
+  let current = greedySeed(players, coeff);
+  let bestScore = scoreLineup(current, coeff);
+  let best = [...current];
+
+  // Hill climbing with 2-opt swaps — iterate over all N slots
+  let improved = true;
+  let iterations = 0;
+  while (improved && iterations < 500) {
+    improved = false;
+    iterations++;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const swapped = [...current];
+        [swapped[i], swapped[j]] = [swapped[j], swapped[i]];
+        const s = scoreLineup(swapped, coeff);
+        if (s > bestScore) {
+          bestScore = s;
+          current = swapped;
+          best = swapped;
+          improved = true;
+        }
+      }
+    }
+  }
+  return { lineup: best, score: bestScore };
+}
+
+function greedySeed(players, coeff) {
+  const n = players.length;
+  // Build slot-player value matrix using interpolated coefficients for N slots
+  const slotValues = [];
+  for (let s = 0; s < n; s++) {
+    // Interpolate coefficient for slot s across N slots (same logic as scoreLineup)
+    let obpC, slgC;
+    if (n === 9) {
+      obpC = coeff.obp[s];
+      slgC = coeff.slg[s];
+    } else {
+      const frac = (s / (n - 1)) * 8;
+      const lo = Math.floor(frac);
+      const hi = Math.min(lo + 1, 8);
+      const t = frac - lo;
+      obpC = coeff.obp[lo] * (1 - t) + coeff.obp[hi] * t;
+      slgC = coeff.slg[lo] * (1 - t) + coeff.slg[hi] * t;
+    }
+    for (let p = 0; p < players.length; p++) {
+      const v = obpC * players[p].obp + slgC * players[p].slg;
+      slotValues.push({ slot: s, player: p, value: v });
+    }
+  }
+  slotValues.sort((a, b) => b.value - a.value);
+
+  const assigned = new Array(n).fill(null);
+  const usedPlayers = new Set();
+  const usedSlots = new Set();
+
+  for (const { slot, player } of slotValues) {
+    if (!usedSlots.has(slot) && !usedPlayers.has(player)) {
+      assigned[slot] = players[player];
+      usedSlots.add(slot);
+      usedPlayers.add(player);
+    }
+    if (usedSlots.size === n) break;
+  }
+  return assigned;
+}
+
+// ============================================================
+// MAIN OPTIMIZER
+// ============================================================
+function runOptimizer() {
+  clearErrors();
+
+  const names = document.querySelectorAll('.name-input');
+  const obps = document.querySelectorAll('.obp-input');
+  const slgs = document.querySelectorAll('.slg-input');
+
+  const players = [];
+  let hasError = false;
+
+  for (let i = 0; i < rowCount; i++) {
+    const name = names[i].value.trim();
+    const obpRaw = obps[i].value.trim();
+    const slgRaw = slgs[i].value.trim();
+
+    // Skip fully empty rows (allow partial roster < 14)
+    if (!name && !obpRaw && !slgRaw) continue;
+
+    const obp = parseFloat(obpRaw);
+    const slg = parseFloat(slgRaw);
+
+    let rowErr = false;
+    if (!name) { names[i].classList.add('invalid'); rowErr = true; }
+    if (isNaN(obp) || obp < 0 || obp > 1) { obps[i].classList.add('invalid'); rowErr = true; }
+    if (isNaN(slg) || slg < 0 || slg > 5) { slgs[i].classList.add('invalid'); rowErr = true; }
+
+    if (rowErr) { hasError = true; continue; }
+
+    players.push({ name, obp, slg });
+  }
+
+  if (hasError) {
+    showError('Fix invalid fields highlighted above (OBP: 0–1.000, SLG: 0–5.000).');
+    return;
+  }
+
+  if (lineupSize === 'all' && players.length < 2) {
+    showError('Need at least 2 players to use All Players mode.');
+    return;
+  }
+
+  if (lineupSize === '9' && players.length < 9) {
+    showError(`Best 9 mode needs at least 9 valid players (currently have ${players.length}).`);
+    return;
+  }
+
+  showComputing();
+
+  setTimeout(() => {
+    try {
+      const results = compute(players, lineupSize);
+      showResults(results, players);
+    } catch (e) {
+      hideComputing();
+      showError('Computation error: ' + e.message);
+    }
+  }, 30);
+}
+
+function compute(players, sizeMode) {
+  const models = currentModel === 'both'
+    ? [{ key: '1989', label: '1989–2002', coeff: COEFF_1989 }, { key: '1959', label: '1959–2004', coeff: COEFF_1959 }]
+    : currentModel === '1989'
+      ? [{ key: '1989', label: '1989–2002', coeff: COEFF_1989 }]
+      : [{ key: '1959', label: '1959–2004', coeff: COEFF_1959 }];
+
+  const numPlayers = players.length;
+  const useAll = sizeMode === 'all';
+  const results = {};
+
+  for (const model of models) {
+    let bestScore = -Infinity;
+    let bestLineup = null;
+    const topLineups = [];
+
+    if (useAll) {
+      // Optimize order of ALL players — no combinations needed
+      const { lineup, score } = optimizeLineupOrder(players, model.coeff);
+      bestLineup = lineup;
+      bestScore = score;
+      // For top lineups, generate a few alternative orderings via perturbation
+      topLineups.push({ lineup, score });
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const shuffled = [...players].sort(() => Math.random() - 0.5);
+        const res = optimizeLineupOrder(shuffled, model.coeff);
+        topLineups.push(res);
+      }
+    } else {
+      // Best-9 mode: evaluate all combinations of 9
+      const combos = combinations(players, 9);
+      for (const combo of combos) {
+        const { lineup, score } = optimizeLineupOrder(combo, model.coeff);
+        if (score > bestScore) {
+          bestScore = score;
+          bestLineup = lineup;
+        }
+        topLineups.push({ lineup, score, combo });
+      }
+    }
+
+    // Sort and deduplicate top lineups by score
+    topLineups.sort((a, b) => b.score - a.score);
+
+    results[model.key] = {
+      label: model.label,
+      best: bestLineup,
+      bestScore,
+      topLineups: topLineups.slice(0, 5),
+      numPlayers,
+      useAll
+    };
+  }
+
+  return { results, models, players, useAll };
+}
+
+// ============================================================
+// UI RENDERING
+// ============================================================
+function switchModelTab(key) {
+  document.getElementById('tab1989').classList.toggle('active', key === '1989');
+  document.getElementById('tab1959').classList.toggle('active', key === '1959');
+  document.getElementById('panel1989').classList.toggle('visible', key === '1989');
+  document.getElementById('panel1959').classList.toggle('visible', key === '1959');
+}
+
+function renderLineupInto(listId, benchSecId, benchPlayersId, lineup, allPlayers, useAll) {
+  const ul = document.getElementById(listId);
+  ul.innerHTML = '';
+  lineup.forEach((p, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span class="slot-num">${i + 1}</span>
+      <span class="player-name-result">${escHtml(p.name)}</span>
+      <span class="stat-pills">
+        <span class="pill pill-obp">${p.obp.toFixed(3)}</span>
+        <span class="pill pill-slg">${p.slg.toFixed(3)}</span>
+      </span>
+    `;
+    ul.appendChild(li);
+  });
+
+  const benchSec = document.getElementById(benchSecId);
+  if (!useAll && allPlayers.length > 9) {
+    const bestNames = new Set(lineup.map(p => p.name));
+    const bench = allPlayers.filter(p => !bestNames.has(p.name));
+    if (bench.length > 0) {
+      benchSec.style.display = 'block';
+      document.getElementById(benchPlayersId).innerHTML = bench.map(p =>
+        `<span class="bench-tag">${escHtml(p.name)} <span style="opacity:.6">${p.obp.toFixed(3)}/${p.slg.toFixed(3)}</span></span>`
+      ).join('');
+      return;
+    }
+  }
+  benchSec.style.display = 'none';
+}
+
+function showResults({ results, models, players, useAll }) {
+  hideComputing();
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('resultsContainer').classList.add('visible');
+
+  const isBoth = currentModel === 'both';
+  const lineupLabel = useAll ? `Full Roster Order · Runs per Game` : 'Optimal Lineup · Runs per Game';
+
+  // Toggle which view is visible
+  document.getElementById('modelTabsRow').style.display = isBoth ? 'block' : 'none';
+  document.getElementById('panel1989').classList.toggle('visible', isBoth);
+  document.getElementById('panel1959').style.display = isBoth ? '' : 'none';
+  document.getElementById('panel1959').classList.toggle('visible', false);
+  document.getElementById('singleModelView').style.display = isBoth ? 'none' : 'block';
+
+  if (isBoth) {
+    // Reset to first tab
+    switchModelTab('1989');
+
+    // Populate both model panels
+    for (const m of models) {
+      const r = results[m.key];
+      const suffix = m.key === '1989' ? '1989' : '1959';
+
+      document.querySelector(`.runs-score-${suffix} .runs-label`).textContent = lineupLabel;
+      document.getElementById(`runsValue${suffix}`).textContent = r.bestScore.toFixed(3);
+      document.getElementById(`runsSubtext${suffix}`).textContent =
+        `≈ ${(r.bestScore * 162).toFixed(0)} runs over 162 games`;
+
+      renderLineupInto(`lineupList${suffix}`, `benchSection${suffix}`, `benchPlayers${suffix}`, r.best, players, useAll);
+    }
+
+    // Comparison block — show slot-by-slot differences
+    const r89 = results['1989'];
+    const r59 = results['1959'];
+    const topLabel = document.getElementById('topLineupsLabel');
+    const topDiv = document.getElementById('topLineups');
+    topLabel.textContent = 'Model Comparison';
+
+    // Build a name→slot map for each model to highlight slot differences
+    const slots89 = {}, slots59 = {};
+    r89.best.forEach((p, i) => slots89[p.name] = i + 1);
+    r59.best.forEach((p, i) => slots59[p.name] = i + 1);
+
+    const scoreDiff = r89.bestScore - r59.bestScore;
+    const diffStr = scoreDiff >= 0
+      ? `<span class="delta-badge delta-pos">+${scoreDiff.toFixed(3)}</span>`
+      : `<span class="delta-badge delta-neg">${scoreDiff.toFixed(3)}</span>`;
+
+    topDiv.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div class="top-lineup-item active" style="cursor:default">
+          <div class="top-lineup-header">
+            <span class="top-lineup-rank">1989–2002</span>
+            <span class="top-lineup-runs">${r89.bestScore.toFixed(3)} R/G</span>
+          </div>
+          <div class="top-lineup-names">${r89.best.map((p,i) => {
+            const s59 = slots59[p.name];
+            const diff = s59 ? (i+1) - s59 : 0;
+            const cls = diff < 0 ? 'moved-up' : diff > 0 ? 'moved-dn' : '';
+            const arrow = diff < 0 ? `▲${Math.abs(diff)}` : diff > 0 ? `▼${diff}` : '—';
+            return `<strong>${i+1}.</strong> ${escHtml(p.name)} <span class="slot-diff ${cls}">${arrow}</span>`;
+          }).join('<br>')}</div>
+        </div>
+        <div class="top-lineup-item" style="cursor:default;border-color:var(--muted)">
+          <div class="top-lineup-header">
+            <span class="top-lineup-rank">1959–2004</span>
+            <span class="top-lineup-runs">${r59.bestScore.toFixed(3)} R/G</span>
+          </div>
+          <div class="top-lineup-names">${r59.best.map((p,i) => {
+            const s89 = slots89[p.name];
+            const diff = s89 ? (i+1) - s89 : 0;
+            const cls = diff < 0 ? 'moved-up' : diff > 0 ? 'moved-dn' : '';
+            const arrow = diff < 0 ? `▲${Math.abs(diff)}` : diff > 0 ? `▼${diff}` : '—';
+            return `<strong>${i+1}.</strong> ${escHtml(p.name)} <span class="slot-diff ${cls}">${arrow}</span>`;
+          }).join('<br>')}</div>
+        </div>
+      </div>
+      <div style="font-size:0.68rem;color:var(--muted);font-family:'IBM Plex Sans',sans-serif;padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:3px;border:1px solid var(--border)">
+        R/G difference (1989 vs 1959): ${diffStr} &nbsp;·&nbsp; Arrows show slot change vs other model
+      </div>
+    `;
+
+  } else {
+    // Single model view
+    const primaryKey = models[0].key;
+    const primary = results[primaryKey];
+
+    document.querySelector('#runsScore .runs-label').textContent = lineupLabel;
+    document.getElementById('runsValue').textContent = primary.bestScore.toFixed(3);
+    document.getElementById('runsSubtext').textContent =
+      `≈ ${(primary.bestScore * 162).toFixed(0)} runs over 162 games`;
+    document.getElementById('modelBadge').textContent = primary.label + ' Model';
+
+    renderLineupInto('lineupList', 'benchSection', 'benchPlayers', primary.best, players, useAll);
+
+    const topLabel = document.getElementById('topLineupsLabel');
+    const topDiv = document.getElementById('topLineups');
+    topLabel.textContent = useAll ? 'Top 5 Full-Roster Orders' : 'Top 5 Lineups';
+    topDiv.innerHTML = primary.topLineups.map((tl, rank) => `
+      <div class="top-lineup-item ${rank === 0 ? 'active' : ''}" data-rank="${rank}">
+        <div class="top-lineup-header">
+          <span class="top-lineup-rank">#${rank + 1}</span>
+          <span class="top-lineup-runs">${tl.score.toFixed(3)} R/G</span>
+        </div>
+        <div class="top-lineup-names">
+          ${tl.lineup.map((p, i) => `<strong>${i+1}.</strong> ${escHtml(p.name)}`).join(' &nbsp;·&nbsp; ')}
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function clearErrors() {
+  document.getElementById('errorMsg').style.display = 'none';
+  document.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
+}
+
+function showComputing() {
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('resultsContainer').classList.remove('visible');
+  document.getElementById('computingMsg').style.display = 'block';
+  document.getElementById('progressBar').style.display = 'block';
+  // Fake progress animation
+  let pct = 0;
+  window._progressTimer = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 12, 92);
+    document.getElementById('progressFill').style.width = pct + '%';
+  }, 120);
+}
+
+function hideComputing() {
+  clearInterval(window._progressTimer);
+  document.getElementById('progressFill').style.width = '100%';
+  setTimeout(() => {
+    document.getElementById('computingMsg').style.display = 'none';
+    document.getElementById('progressBar').style.display = 'none';
+    document.getElementById('progressFill').style.width = '0%';
+  }, 300);
+}
+
+function clearAll() {
+  document.querySelectorAll('.name-input, .obp-input, .slg-input').forEach(el => {
+    el.value = '';
+    el.classList.remove('invalid');
+  });
+  document.getElementById('errorMsg').style.display = 'none';
+  document.getElementById('resultsContainer').classList.remove('visible');
+  document.getElementById('placeholder').style.display = 'flex';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function loadSample() {
+  // 2025 Milwaukee Brewers — top 14 hitters by plate appearances
+  // Source: TheBaseballCube (2025 final regular season stats)
+  const sample = [
+    { name: 'Brice Turang',       obp: 0.359, slg: 0.435 },  // 659 PA
+    { name: 'William Contreras',  obp: 0.355, slg: 0.399 },  // 659 PA
+    { name: 'Christian Yelich',   obp: 0.343, slg: 0.452 },  // 644 PA
+    { name: 'Sal Frelick',        obp: 0.351, slg: 0.405 },  // 590 PA
+    { name: 'Jackson Chourio',    obp: 0.308, slg: 0.463 },  // 589 PA
+    { name: 'Joey Ortiz',         obp: 0.276, slg: 0.317 },  // 506 PA
+    { name: 'Caleb Durbin',       obp: 0.334, slg: 0.387 },  // 506 PA
+    { name: 'Isaac Collins',      obp: 0.368, slg: 0.411 },  // 441 PA
+    { name: 'Rhys Hoskins',       obp: 0.332, slg: 0.416 },  // 328 PA
+    { name: 'Andrew Vaughn',      obp: 0.375, slg: 0.493 },  // 254 PA
+    { name: 'Jake Bauers',        obp: 0.353, slg: 0.399 },  // 218 PA
+    { name: 'Blake Perkins',      obp: 0.298, slg: 0.348 },  // 171 PA
+    { name: 'Andruw Monasterio',  obp: 0.319, slg: 0.437 },  // 135 PA
+    { name: 'Eric Haase',         obp: 0.289, slg: 0.357 },  // 77 PA
+  ];
+  // Ensure enough rows
+  if (rowCount < sample.length) {
+    rowCount = sample.length;
+    buildRows();
+  }
+  const names = document.querySelectorAll('.name-input');
+  const obps = document.querySelectorAll('.obp-input');
+  const slgs = document.querySelectorAll('.slg-input');
+  sample.forEach((p, i) => {
+    names[i].value = p.name;
+    obps[i].value = p.obp.toFixed(3);
+    slgs[i].value = p.slg.toFixed(3);
+  });
+}
+
+// ============================================================
+// CSV IMPORT
+// ============================================================
+(function setupDragDrop() {
+  const zone = document.getElementById('csvDropZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) handleCsvFile(file);
+  });
+})();
+
+function handleCsvFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => parseCsv(e.target.result, file.name);
+  reader.readAsText(file);
+  // Reset file input so same file can be re-imported
+  document.getElementById('csvFileInput').value = '';
+}
+
+function parseCsv(text, filename) {
+  const successEl = document.getElementById('csvSuccess');
+  successEl.style.display = 'none';
+
+  // Split into lines, skip blank
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) { showError('CSV must have a header row and at least one data row.'); return; }
+
+  // Parse header — find column indices flexibly
+  const header = splitCsvLine(lines[0]).map(h => h.trim().toLowerCase().replace(/[^a-z0-9_]/g,''));
+
+  const nameIdx  = findCol(header, ['name','player','playername','player_name','fullname']);
+  const obpIdx   = findCol(header, ['obp','onbase','on_base','onbasepct','onbasepercentage','obpct']);
+  const slgIdx   = findCol(header, ['slg','slugging','sluggingpct','sluggingpercentage','slgpct']);
+
+  if (nameIdx === -1) { showError('CSV missing a name column (expected: name, player, player_name, etc.)'); return; }
+  if (obpIdx  === -1) { showError('CSV missing OBP column (expected: obp, on_base, onbase_pct, etc.)'); return; }
+  if (slgIdx  === -1) { showError('CSV missing SLG column (expected: slg, slugging, slg_pct, etc.)'); return; }
+
+  const players = [];
+  const errors = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitCsvLine(lines[i]);
+    const name = (cols[nameIdx] || '').trim();
+    const obpRaw = (cols[obpIdx] || '').trim();
+    const slgRaw = (cols[slgIdx] || '').trim();
+
+    if (!name && !obpRaw && !slgRaw) continue; // blank row
+
+    const obp = parseFloat(obpRaw);
+    const slg = parseFloat(slgRaw);
+
+    if (!name) { errors.push(`Row ${i+1}: missing name`); continue; }
+    if (isNaN(obp) || obp < 0 || obp > 1) { errors.push(`Row ${i+1} (${name}): invalid OBP "${obpRaw}"`); continue; }
+    if (isNaN(slg) || slg < 0 || slg > 5) { errors.push(`Row ${i+1} (${name}): invalid SLG "${slgRaw}"`); continue; }
+
+    players.push({ name, obp, slg });
+    if (players.length === 14) break; // max 14
+  }
+
+  if (players.length < 9) {
+    showError(`CSV only has ${players.length} valid player(s). Need at least 9. ${errors.length ? 'Errors: ' + errors.join('; ') : ''}`);
+    return;
+  }
+
+  // Load into table
+  rowCount = Math.min(players.length, 14);
+  buildRows();
+
+  const names = document.querySelectorAll('.name-input');
+  const obps  = document.querySelectorAll('.obp-input');
+  const slgs  = document.querySelectorAll('.slg-input');
+
+  players.slice(0, 14).forEach((p, i) => {
+    names[i].value = p.name;
+    obps[i].value  = p.obp.toFixed(3);
+    slgs[i].value  = p.slg.toFixed(3);
+  });
+
+  clearErrors();
+  successEl.textContent = `✓ Loaded ${players.length} player${players.length !== 1 ? 's' : ''} from "${filename}"${errors.length ? ` (${errors.length} row(s) skipped)` : ''}.`;
+  successEl.style.display = 'block';
+}
+
+function findCol(header, candidates) {
+  for (const c of candidates) {
+    const idx = header.indexOf(c);
+    if (idx !== -1) return idx;
+  }
+  // Partial match fallback
+  for (const c of candidates) {
+    const idx = header.findIndex(h => h.includes(c) || c.includes(h));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
+function splitCsvLine(line) {
+  // Handle quoted fields
+  const result = [];
+  let cur = '', inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuote = !inQuote; }
+    else if (ch === ',' && !inQuote) { result.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function downloadTemplate() {
+  const csv = [
+    'name,obp,slg',
+    'Player 1,0.350,0.450',
+    'Player 2,0.340,0.500',
+    'Player 3,0.380,0.420',
+    'Player 4,0.360,0.550',
+    'Player 5,0.320,0.480',
+    'Player 6,0.310,0.430',
+    'Player 7,0.300,0.410',
+    'Player 8,0.290,0.390',
+    'Player 9,0.280,0.370',
+  ].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'lineup-template.csv';
+  a.click();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+buildRows();
+</script>
+</body>
+</html>
