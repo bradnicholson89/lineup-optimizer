@@ -1094,7 +1094,7 @@
 
       <div class="credit-card">
         <div class="credit-name">Cyril Morong</div>
-        <div class="credit-role">Developed the regression analysis establishing the relative value of OBP and SLG for each batting order slot, using Retrosheet data from 1989–2002 and 1959–2004.</div>
+        <div class="credit-role">Developed the regression analysis establishing the relative value of OBP and SLG by batting order slot (1989–2002 OBP/SLG model), and an extended HWXB model using Hit%, Walk%, and Extra-Base% per plate appearance for the 1959–2004 dataset.</div>
         <div class="credit-links">
           <a class="credit-link" href="https://cyrilmorong.com/ValueofOBPandSLGbyLineupPosition.htm" target="_blank">Part 1 (1989–2002)</a>
           <a class="credit-link" href="https://cyrilmorong.com/ValueofOBPandSLGbyLineupPositionPart2.htm" target="_blank">Part 2 (1959–2004)</a>
@@ -1147,20 +1147,28 @@
 // ============================================================
 
 // 1989-2002 model — exact coefficients from Ken Arneson's verified Perl script
+// Source: https://catfishstew.baseballtoaster.com/archives/322075.html
+// Inputs: OBP and SLG (raw decimals)
 const COEFF_1989 = {
+  type: 'obpslg',
   obp: [2.997, 2.255, 2.141, 1.670, 2.254, 1.346, 1.528, 1.188, 2.550],
   slg: [0.931, 1.263, 0.933, 1.504, 1.146, 1.237, 1.164, 0.825, 0.539],
   intercept: -5.261
 };
 
-// 1959-2004 model — Morong's extended dataset (Part 2 article)
-// Coefficients derived by back-solving against Baseball Musings output (7.113 R/G)
-// for a known 9-player test case. Scale factor = 0.9811 applied to 1989-2002 slopes,
-// same intercept (-5.261). Verified to within 0.0005 R/G of Baseball Musings.
+// 1959-2004 model — Morong's HWXB regression (Hit%, Walk%, Extra-Base% per PA)
+// Source: Cyril Morong 1959-2004 regression worksheet (user-supplied)
+// Inputs are converted from OBP/SLG using league-average approximations:
+//   H%  = OBP * 0.72  (hits ≈ 72% of on-base events)
+//   W%  = OBP * 0.28  (walks ≈ 28% of on-base events)
+//   XB% = (SLG - H%) * 0.88  (extra bases scaled from AB to PA basis)
+// This model produces DIFFERENT slot priorities and batting orders vs 1989-2002.
 const COEFF_1959 = {
-  obp: [2.9404, 2.2124, 2.1005, 1.6384, 2.2114, 1.3206, 1.4991, 1.1655, 2.5018],
-  slg: [0.9134, 1.2391, 0.9154, 1.4756, 1.1243, 1.2136, 1.1420, 0.8094, 0.5288],
-  intercept: -5.261
+  type: 'hwxb',
+  H:  [3.437, 3.571, 3.303, 3.097, 2.833, 2.590, 2.718, 2.466, 2.507],
+  W:  [3.088, 2.564, 2.164, 2.631, 2.497, 2.495, 2.012, 2.009, 2.105],
+  XB: [1.038, 1.402, 1.310, 1.348, 1.477, 1.137, 0.889, 1.391, 0.458],
+  intercept: -5.05
 };
 
 // ============================================================
@@ -1214,28 +1222,58 @@ function removeRow() {
 // ============================================================
 // SCORING FUNCTION
 // ============================================================
+
+// Convert OBP/SLG to H%/W%/XB% for the HWXB model
+function toHWXB(obp, slg) {
+  const h  = obp * 0.72;
+  const w  = obp * 0.28;
+  const xb = (slg - h) * 0.88;
+  return { h, w, xb };
+}
+
+// Score a slot using HWXB coefficients at slot index i
+function scoreSlotHWXB(coeff, i, obp, slg) {
+  const { h, w, xb } = toHWXB(obp, slg);
+  return coeff.H[i] * h + coeff.W[i] * w + coeff.XB[i] * xb;
+}
+
+// Score a slot using OBP/SLG coefficients at slot index i
+function scoreSlotOBPSLG(coeff, i, obp, slg) {
+  return coeff.obp[i] * obp + coeff.slg[i] * slg;
+}
+
+// Interpolate a coefficient array at fractional slot position frac (0–8)
+function interpCoeff(arr, frac) {
+  const lo = Math.floor(frac), hi = Math.min(lo + 1, 8), t = frac - lo;
+  return arr[lo] * (1 - t) + arr[hi] * t;
+}
+
 function scoreLineup(lineup, coeff) {
   const n = lineup.length;
   let runs = coeff.intercept;
 
   if (n === 9) {
-    // Standard 9-slot scoring — raw decimal OBP/SLG, no *1000
     for (let i = 0; i < 9; i++) {
-      runs += coeff.obp[i] * lineup[i].obp;
-      runs += coeff.slg[i] * lineup[i].slg;
+      if (coeff.type === 'hwxb') {
+        runs += scoreSlotHWXB(coeff, i, lineup[i].obp, lineup[i].slg);
+      } else {
+        runs += scoreSlotOBPSLG(coeff, i, lineup[i].obp, lineup[i].slg);
+      }
     }
   } else {
-    // For lineups > 9: interpolate coefficients across N slots
+    // Interpolate across N slots for All Players mode
     for (let i = 0; i < n; i++) {
       const frac = (i / (n - 1)) * 8;
-      const lo = Math.floor(frac);
-      const hi = Math.min(lo + 1, 8);
-      const t = frac - lo;
-      const obpC = coeff.obp[lo] * (1 - t) + coeff.obp[hi] * t;
-      const slgC = coeff.slg[lo] * (1 - t) + coeff.slg[hi] * t;
       const scale = 9 / n;
-      runs += obpC * lineup[i].obp * scale;
-      runs += slgC * lineup[i].slg * scale;
+      if (coeff.type === 'hwxb') {
+        const { h, w, xb } = toHWXB(lineup[i].obp, lineup[i].slg);
+        runs += (interpCoeff(coeff.H, frac) * h +
+                 interpCoeff(coeff.W, frac) * w +
+                 interpCoeff(coeff.XB, frac) * xb) * scale;
+      } else {
+        runs += (interpCoeff(coeff.obp, frac) * lineup[i].obp +
+                 interpCoeff(coeff.slg, frac) * lineup[i].slg) * scale;
+      }
     }
   }
   return runs;
@@ -1299,33 +1337,29 @@ function optimizeLineupOrder(players, coeff) {
 
 function greedySeed(players, coeff) {
   const n = players.length;
-  // Build slot-player value matrix using interpolated coefficients for N slots
   const slotValues = [];
+
   for (let s = 0; s < n; s++) {
-    // Interpolate coefficient for slot s across N slots (same logic as scoreLineup)
-    let obpC, slgC;
-    if (n === 9) {
-      obpC = coeff.obp[s];
-      slgC = coeff.slg[s];
-    } else {
-      const frac = (s / (n - 1)) * 8;
-      const lo = Math.floor(frac);
-      const hi = Math.min(lo + 1, 8);
-      const t = frac - lo;
-      obpC = coeff.obp[lo] * (1 - t) + coeff.obp[hi] * t;
-      slgC = coeff.slg[lo] * (1 - t) + coeff.slg[hi] * t;
-    }
+    const frac = n === 9 ? s : (s / (n - 1)) * 8;
+
     for (let p = 0; p < players.length; p++) {
-      const v = obpC * players[p].obp + slgC * players[p].slg;
+      let v;
+      if (coeff.type === 'hwxb') {
+        const { h, w, xb } = toHWXB(players[p].obp, players[p].slg);
+        v = interpCoeff(coeff.H, frac) * h +
+            interpCoeff(coeff.W, frac) * w +
+            interpCoeff(coeff.XB, frac) * xb;
+      } else {
+        v = interpCoeff(coeff.obp, frac) * players[p].obp +
+            interpCoeff(coeff.slg, frac) * players[p].slg;
+      }
       slotValues.push({ slot: s, player: p, value: v });
     }
   }
+
   slotValues.sort((a, b) => b.value - a.value);
-
   const assigned = new Array(n).fill(null);
-  const usedPlayers = new Set();
-  const usedSlots = new Set();
-
+  const usedPlayers = new Set(), usedSlots = new Set();
   for (const { slot, player } of slotValues) {
     if (!usedSlots.has(slot) && !usedPlayers.has(player)) {
       assigned[slot] = players[player];
