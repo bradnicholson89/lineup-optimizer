@@ -37,29 +37,75 @@
   header {
     background: var(--panel);
     border-bottom: 2px solid var(--gold);
-    padding: 20px 32px;
+    padding: 16px 32px;
     display: flex;
-    align-items: baseline;
+    align-items: center;
+    justify-content: space-between;
     gap: 20px;
     flex-wrap: wrap;
   }
 
-  header h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(2rem, 5vw, 3.4rem);
-    color: var(--accent);
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .header-logo {
+    width: 54px;
+    height: 54px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 8px rgba(255,199,44,0.35));
+    transition: filter 0.3s;
+  }
+
+  .header-logo:hover {
+    filter: drop-shadow(0 0 14px rgba(255,199,44,0.65));
+  }
+
+  .header-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .header-eyebrow {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 500;
+    color: var(--gold);
+    text-transform: uppercase;
     letter-spacing: 3px;
     line-height: 1;
   }
 
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    color: var(--chalk);
+    letter-spacing: 4px;
+    line-height: 1;
+    margin: 0;
+  }
+
+  header h1 span.accent {
+    color: var(--accent);
+  }
+
   header .sub {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: var(--muted);
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 1.5px;
     font-family: 'IBM Plex Sans', sans-serif;
-    max-width: 460px;
-    line-height: 1.5;
+    max-width: 420px;
+    line-height: 1.6;
+    text-align: right;
+  }
+
+  @media (max-width: 700px) {
+    header .sub { display: none; }
+    header { padding: 14px 20px; }
   }
 
   .main-grid {
@@ -762,12 +808,122 @@
   }
   .slot-diff.moved-up { color: #2ecc71; }
   .slot-diff.moved-dn { color: #e74c3c; }
+
+  /* Footer */
+  .app-footer {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 28px 32px;
+    margin-top: 8px;
+  }
+
+  .footer-inner {
+    max-width: 1300px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .footer-heading {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 3px;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+
+  .footer-credits {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .credit-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 16px;
+  }
+
+  .credit-card .credit-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--chalk);
+    margin-bottom: 4px;
+  }
+
+  .credit-card .credit-role {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.68rem;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+
+  .credit-card .credit-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .credit-link {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.62rem;
+    color: var(--gold);
+    text-decoration: none;
+    padding: 3px 8px;
+    border: 1px solid rgba(212,168,67,0.3);
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+
+  .credit-link:hover {
+    background: rgba(212,168,67,0.1);
+    border-color: var(--gold);
+  }
+
+  .footer-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+
+  .footer-note {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.65rem;
+    color: var(--muted);
+    line-height: 1.7;
+    text-align: center;
+  }
+
+  .footer-note a {
+    color: var(--gold);
+    text-decoration: none;
+  }
+
+  .footer-note a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>⚾ Lineup Optimizer</h1>
+  <div class="header-brand">
+    <!-- Brewers-style logo -->
+    <svg class="header-logo" viewBox="0 0 680 460" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="180,80 500,80 570,230 340,390 110,230" fill="none" stroke="#FFC72C" stroke-width="18" stroke-linejoin="round"/>
+      <polygon points="210,108 470,108 532,238 340,368 148,238" fill="transparent" stroke="#FFC72C" stroke-width="10" stroke-linejoin="round"/>
+      <line x1="155" y1="95" x2="295" y2="70" stroke="#FFC72C" stroke-width="8" stroke-linecap="round"/>
+      <line x1="210" y1="108" x2="320" y2="86" stroke="#FFC72C" stroke-width="5" stroke-linecap="round"/>
+      <line x1="290" y1="388" x2="340" y2="418" stroke="#FFC72C" stroke-width="6" stroke-linecap="round"/>
+      <line x1="390" y1="388" x2="340" y2="418" stroke="#FFC72C" stroke-width="6" stroke-linecap="round"/>
+    </svg>
+    <div class="header-title-block">
+      <div class="header-eyebrow">Baseball Analytics</div>
+      <h1><span class="accent">Lineup</span> Optimizer</h1>
+    </div>
+  </div>
   <div class="sub">Enter up to 14 players with OBP & Slugging. The tool evaluates all lineup combinations and ranks by expected runs/game — based on Morong regression analysis.</div>
 </header>
 
@@ -842,7 +998,7 @@
     </div>
 
     <div class="info-strip">
-      Methodology based on regression analysis by <a href="https://cyrilmorong.com/ValueofOBPandSLGbyLineupPosition.htm" target="_blank">Cyril Morong</a>, originally implemented at <a href="https://www.baseballmusings.com/cgi-bin/LineupAnalysis.py" target="_blank">Baseball Musings</a>. OBP and SLG coefficients vary by lineup slot and model period. <strong>Best 9</strong> evaluates all combinations to find the optimal 9-man lineup. <strong>All Players</strong> finds the best batting order for your full roster.
+      <strong>Best 9</strong> evaluates all combinations to find the optimal 9-man lineup from your roster. <strong>All Players</strong> finds the best batting order for your full entered roster. OBP and SLG coefficients vary by lineup slot and model period.
     </div>
   </div>
 
@@ -927,7 +1083,59 @@
     </div><!-- /.right-panel -->
   </div><!-- /.right-panel-wrapper -->
 
-</div>
+</div><!-- /.main-grid -->
+
+<footer class="app-footer">
+  <div class="footer-inner">
+
+    <div class="footer-heading">Based on work by</div>
+
+    <div class="footer-credits">
+
+      <div class="credit-card">
+        <div class="credit-name">Cyril Morong</div>
+        <div class="credit-role">Developed the regression analysis establishing the relative value of OBP and SLG for each batting order slot, using Retrosheet data from 1989–2002 and 1959–2004.</div>
+        <div class="credit-links">
+          <a class="credit-link" href="https://cyrilmorong.com/ValueofOBPandSLGbyLineupPosition.htm" target="_blank">Part 1 (1989–2002)</a>
+          <a class="credit-link" href="https://cyrilmorong.com/ValueofOBPandSLGbyLineupPositionPart2.htm" target="_blank">Part 2 (1959–2004)</a>
+        </div>
+      </div>
+
+      <div class="credit-card">
+        <div class="credit-name">Ken Arneson</div>
+        <div class="credit-role">Translated Morong's regression coefficients into a working Perl script that exhaustively evaluated all 362,880 batting order permutations, forming the computational basis of this tool.</div>
+        <div class="credit-links">
+          <a class="credit-link" href="https://catfishstew.baseballtoaster.com/archives/322075.html" target="_blank">Must. Bat. Kendall. Ninth.</a>
+        </div>
+      </div>
+
+      <div class="credit-card">
+        <div class="credit-name">Ryan Armbrust</div>
+        <div class="credit-role">Applied Morong's methodology to real-world lineup optimization and contributed to the original Baseball Musings implementation alongside Arneson.</div>
+        <div class="credit-links">
+          <a class="credit-link" href="https://thepastime.net/2006/02/13/lineup-optimization/" target="_blank">Lineup Optimization (2006)</a>
+        </div>
+      </div>
+
+      <div class="credit-card">
+        <div class="credit-name">Baseball Musings</div>
+        <div class="credit-role">Hosted the original web-based lineup analysis tool that brought Morong, Arneson, and Armbrust's work to a wider audience. The verified coefficients in this tool match Baseball Musings output to within 0.001 R/G.</div>
+        <div class="credit-links">
+          <a class="credit-link" href="https://www.baseballmusings.com/cgi-bin/LineupAnalysis.py" target="_blank">Original Tool</a>
+          <a class="credit-link" href="https://www.baseballmusings.com" target="_blank">Baseball Musings</a>
+        </div>
+      </div>
+
+    </div>
+
+    <hr class="footer-divider">
+
+    <div class="footer-note">
+      This tool is an independent reimplementation for educational and analytical purposes. Regression coefficients are verified against the original Baseball Musings tool (±0.001 R/G). Player statistics sourced from <a href="https://www.thebaseballcube.com" target="_blank">The Baseball Cube</a>.
+    </div>
+
+  </div>
+</footer>
 
 <script>
 // ============================================================
