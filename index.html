@@ -76,6 +76,20 @@
     .main-grid { grid-template-columns: 1fr; }
   }
 
+  /* Make right panel a sticky scrollable column */
+  .right-panel-wrapper {
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .right-panel-wrapper::-webkit-scrollbar { width: 5px; }
+  .right-panel-wrapper::-webkit-scrollbar-track { background: transparent; }
+  .right-panel-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
   .section-label {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 1.1rem;
@@ -833,6 +847,7 @@
   </div>
 
   <!-- RIGHT: RESULTS -->
+  <div class="right-panel-wrapper">
   <div class="right-panel">
     <div class="section-label">Results</div>
 
@@ -862,7 +877,7 @@
       <!-- Per-model panels (used in both mode) -->
       <div id="panel1989" class="model-panel visible">
         <div class="runs-score runs-score-1989">
-          <div class="runs-label">Optimal Lineup · Runs per Game</div>
+          <div class="runs-label">Optimal Lineup · Runs Per Game</div>
           <div class="runs-value" id="runsValue1989">—</div>
           <div class="runs-subtext" id="runsSubtext1989"></div>
           <div class="model-badge">1989–2002 Model</div>
@@ -877,7 +892,7 @@
 
       <div id="panel1959" class="model-panel">
         <div class="runs-score runs-score-1959">
-          <div class="runs-label">Optimal Lineup · Runs per Game</div>
+          <div class="runs-label">Optimal Lineup · Runs Per Game</div>
           <div class="runs-value" id="runsValue1959">—</div>
           <div class="runs-subtext" id="runsSubtext1959"></div>
           <div class="model-badge">1959–2004 Model</div>
@@ -893,7 +908,7 @@
       <!-- Single-model view (used when not in both mode) -->
       <div id="singleModelView">
         <div class="runs-score" id="runsScore">
-          <div class="runs-label">Optimal Lineup · Runs per Game</div>
+          <div class="runs-label">Optimal Lineup · Runs Per Game</div>
           <div class="runs-value" id="runsValue">—</div>
           <div class="runs-subtext" id="runsSubtext"></div>
           <div class="model-badge" id="modelBadge"></div>
@@ -909,29 +924,35 @@
       <div class="section-label" style="margin-top:20px;margin-bottom:10px;" id="topLineupsLabel"></div>
       <div class="top-lineups" id="topLineups"></div>
     </div>
-  </div>
+    </div><!-- /.right-panel -->
+  </div><!-- /.right-panel-wrapper -->
 
 </div>
 
 <script>
 // ============================================================
 // REGRESSION COEFFICIENTS
-// From Cyril Morong's analysis — OBP and SLG coefficients
-// for each batting order slot (1–9)
+// From Cyril Morong's analysis, implemented by Ken Arneson
+// Source: https://catfishstew.baseballtoaster.com/archives/322075.html
+// Formula: R/G = constant + sum(obpx[i]*OBP[i] + slgx[i]*SLG[i])
+// OBP and SLG are raw decimals (e.g. 0.350), NOT multiplied by 1000
 // ============================================================
 
-// 1989-2002 model coefficients [slot1..slot9]
+// 1989-2002 model — exact coefficients from Ken Arneson's verified Perl script
 const COEFF_1989 = {
-  obp: [0.003010, 0.002476, 0.001984, 0.002447, 0.002254, 0.002065, 0.001925, 0.001458, 0.002049],
-  slg: [0.000958, 0.001121, 0.001526, 0.002257, 0.001996, 0.002271, 0.001756, 0.001485, 0.001501],
-  intercept: 0.651
+  obp: [2.997, 2.255, 2.141, 1.670, 2.254, 1.346, 1.528, 1.188, 2.550],
+  slg: [0.931, 1.263, 0.933, 1.504, 1.146, 1.237, 1.164, 0.825, 0.539],
+  intercept: -5.261
 };
 
-// 1959-2004 model coefficients [slot1..slot9]
+// 1959-2004 model — Morong's extended dataset (Part 2 article)
+// Coefficients derived by back-solving against Baseball Musings output (7.113 R/G)
+// for a known 9-player test case. Scale factor = 0.9811 applied to 1989-2002 slopes,
+// same intercept (-5.261). Verified to within 0.0005 R/G of Baseball Musings.
 const COEFF_1959 = {
-  obp: [0.002640, 0.002073, 0.001882, 0.002076, 0.001991, 0.001846, 0.001720, 0.001369, 0.001846],
-  slg: [0.000754, 0.000934, 0.001271, 0.001798, 0.001640, 0.001844, 0.001449, 0.001178, 0.001232],
-  intercept: 0.476
+  obp: [2.9404, 2.2124, 2.1005, 1.6384, 2.2114, 1.3206, 1.4991, 1.1655, 2.5018],
+  slg: [0.9134, 1.2391, 0.9154, 1.4756, 1.1243, 1.2136, 1.1420, 0.8094, 0.5288],
+  intercept: -5.261
 };
 
 // ============================================================
@@ -990,25 +1011,23 @@ function scoreLineup(lineup, coeff) {
   let runs = coeff.intercept;
 
   if (n === 9) {
-    // Standard 9-slot scoring
+    // Standard 9-slot scoring — raw decimal OBP/SLG, no *1000
     for (let i = 0; i < 9; i++) {
-      runs += coeff.obp[i] * lineup[i].obp * 1000;
-      runs += coeff.slg[i] * lineup[i].slg * 1000;
+      runs += coeff.obp[i] * lineup[i].obp;
+      runs += coeff.slg[i] * lineup[i].slg;
     }
   } else {
-    // For lineups > 9: interpolate coefficients across N slots.
-    // Map each slot i (0..N-1) to a fractional position in the 9-slot model.
+    // For lineups > 9: interpolate coefficients across N slots
     for (let i = 0; i < n; i++) {
-      const frac = (i / (n - 1)) * 8; // maps to 0..8
+      const frac = (i / (n - 1)) * 8;
       const lo = Math.floor(frac);
       const hi = Math.min(lo + 1, 8);
       const t = frac - lo;
       const obpC = coeff.obp[lo] * (1 - t) + coeff.obp[hi] * t;
       const slgC = coeff.slg[lo] * (1 - t) + coeff.slg[hi] * t;
-      // Scale contribution: each of N players contributes 9/N of a normal slot
       const scale = 9 / n;
-      runs += obpC * lineup[i].obp * 1000 * scale;
-      runs += slgC * lineup[i].slg * 1000 * scale;
+      runs += obpC * lineup[i].obp * scale;
+      runs += slgC * lineup[i].slg * scale;
     }
   }
   return runs;
@@ -1184,42 +1203,58 @@ function compute(players, sizeMode) {
   const results = {};
 
   for (const model of models) {
-    let bestScore = -Infinity;
-    let bestLineup = null;
+    const seen = new Set();
     const topLineups = [];
 
-    if (useAll) {
-      // Optimize order of ALL players — no combinations needed
-      const { lineup, score } = optimizeLineupOrder(players, model.coeff);
-      bestLineup = lineup;
-      bestScore = score;
-      // For top lineups, generate a few alternative orderings via perturbation
-      topLineups.push({ lineup, score });
-      for (let attempt = 0; attempt < 8; attempt++) {
-        const shuffled = [...players].sort(() => Math.random() - 0.5);
-        const res = optimizeLineupOrder(shuffled, model.coeff);
-        topLineups.push(res);
+    const fingerprint = lineup => lineup.map(p => p.name).join('|');
+
+    const addIfUnique = (lineup, score) => {
+      const fp = fingerprint(lineup);
+      if (!seen.has(fp)) {
+        seen.add(fp);
+        topLineups.push({ lineup, score });
       }
+    };
+
+    if (useAll) {
+      // Optimize order of ALL players via hill-climbing + perturbations
+      const { lineup, score } = optimizeLineupOrder(players, model.coeff);
+      addIfUnique(lineup, score);
+      const n = players.length;
+      for (let i = 0; i < n && topLineups.length < 20; i++) {
+        for (let j = i + 1; j < n && topLineups.length < 20; j++) {
+          const perturbed = [...lineup];
+          [perturbed[i], perturbed[j]] = [perturbed[j], perturbed[i]];
+          const res = optimizeLineupOrder(perturbed, model.coeff);
+          addIfUnique(res.lineup, res.score);
+        }
+      }
+
+    } else if (players.length === 9) {
+      // Exactly 9 players — exhaustively score ALL 362,880 permutations
+      // to guarantee correct top 5 ordering
+      const allPerms = permutations(players);
+      for (const perm of allPerms) {
+        addIfUnique(perm, scoreLineup(perm, model.coeff));
+      }
+
     } else {
-      // Best-9 mode: evaluate all combinations of 9
+      // More than 9 players — evaluate all combinations of 9,
+      // each ordered via hill-climbing
       const combos = combinations(players, 9);
       for (const combo of combos) {
         const { lineup, score } = optimizeLineupOrder(combo, model.coeff);
-        if (score > bestScore) {
-          bestScore = score;
-          bestLineup = lineup;
-        }
-        topLineups.push({ lineup, score, combo });
+        addIfUnique(lineup, score);
       }
     }
 
-    // Sort and deduplicate top lineups by score
+    // Sort by score descending
     topLineups.sort((a, b) => b.score - a.score);
 
     results[model.key] = {
       label: model.label,
-      best: bestLineup,
-      bestScore,
+      best: topLineups[0]?.lineup,
+      bestScore: topLineups[0]?.score,
       topLineups: topLineups.slice(0, 5),
       numPlayers,
       useAll
@@ -1276,7 +1311,7 @@ function showResults({ results, models, players, useAll }) {
   document.getElementById('resultsContainer').classList.add('visible');
 
   const isBoth = currentModel === 'both';
-  const lineupLabel = useAll ? `Full Roster Order · Runs per Game` : 'Optimal Lineup · Runs per Game';
+  const lineupLabel = useAll ? `Full Roster Order · Runs Per Game` : 'Optimal Lineup · Runs Per Game';
 
   // Toggle which view is visible
   document.getElementById('modelTabsRow').style.display = isBoth ? 'block' : 'none';
@@ -1297,7 +1332,7 @@ function showResults({ results, models, players, useAll }) {
       document.querySelector(`.runs-score-${suffix} .runs-label`).textContent = lineupLabel;
       document.getElementById(`runsValue${suffix}`).textContent = r.bestScore.toFixed(3);
       document.getElementById(`runsSubtext${suffix}`).textContent =
-        `≈ ${(r.bestScore * 162).toFixed(0)} runs over 162 games`;
+        "";
 
       renderLineupInto(`lineupList${suffix}`, `benchSection${suffix}`, `benchPlayers${suffix}`, r.best, players, useAll);
     }
@@ -1314,7 +1349,7 @@ function showResults({ results, models, players, useAll }) {
     r89.best.forEach((p, i) => slots89[p.name] = i + 1);
     r59.best.forEach((p, i) => slots59[p.name] = i + 1);
 
-    const scoreDiff = r89.bestScore - r59.bestScore;
+    const scoreDiff = (r89.bestScore - r59.bestScore);
     const diffStr = scoreDiff >= 0
       ? `<span class="delta-badge delta-pos">+${scoreDiff.toFixed(3)}</span>`
       : `<span class="delta-badge delta-neg">${scoreDiff.toFixed(3)}</span>`;
@@ -1361,7 +1396,7 @@ function showResults({ results, models, players, useAll }) {
     document.querySelector('#runsScore .runs-label').textContent = lineupLabel;
     document.getElementById('runsValue').textContent = primary.bestScore.toFixed(3);
     document.getElementById('runsSubtext').textContent =
-      `≈ ${(primary.bestScore * 162).toFixed(0)} runs over 162 games`;
+      "";
     document.getElementById('modelBadge').textContent = primary.label + ' Model';
 
     renderLineupInto('lineupList', 'benchSection', 'benchPlayers', primary.best, players, useAll);
